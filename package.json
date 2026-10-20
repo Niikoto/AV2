@@ -1,0 +1,39 @@
+{
+  "name": "greencode",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sistema de logística reversa com CLI e API REST.",
+  "engines": {
+    "node": "^22.12.0 || >=24.0.0"
+  },
+  "scripts": {
+    "build": "npm run db:generate && tsc -p tsconfig.json",
+    "start": "npm run start:server",
+    "start:cli": "node --import dotenv/config dist/index.js",
+    "start:server": "node --import dotenv/config dist/server.js",
+    "db:generate": "prisma generate",
+    "db:validate": "prisma validate",
+    "db:script": "prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script --output prisma/create_database.sql",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:status": "prisma migrate status",
+    "db:seed": "npm run build && node prisma/seed.mjs",
+    "test": "npm run build && node --test tests/av1.test.mjs tests/server.test.mjs tests/repositories.test.mjs tests/services-prisma.test.mjs"
+  },
+  "dependencies": {
+    "@fastify/jwt": "^10.2.5",
+    "@fastify/swagger": "^9.9.2",
+    "@fastify/swagger-ui": "^6.1.2",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "dotenv": "^18.0.8",
+    "fastify": "^5.6.2",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.23.1",
+    "prisma": "^7.10.1",
+    "typescript": "^5.7.2"
+  }
+}

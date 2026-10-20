@@ -1,0 +1,201 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PapelUsuario {
+  ADMINISTRADOR
+  OPERADOR_CADASTRO
+  GESTOR_ALMOXARIFADO
+  AUDITOR
+}
+
+enum EstadoFisico {
+  NOVO
+  BOM_ESTADO
+  USADO_LEVE
+  USADO_MODERADO
+  DANIFICADO_LEVE
+  DANIFICADO_GRAVE
+  INSERVIVEL
+}
+
+enum StatusLote {
+  RECEBIDO
+  EM_TRIAGEM
+  TRIAGEM_CONCLUIDA
+  ENCAMINHADO
+  FINALIZADO
+}
+
+enum StatusRastreamento {
+  AGUARDANDO_TRIAGEM
+  EM_TRIAGEM
+  AGUARDANDO_DESMONTE
+  EM_DESMONTE
+  PECAS_REAPROVEITADAS
+  MATERIAL_RECICLAVEL
+  DESCARTE_SEGURO
+  BAIXA_DEFINITIVA
+}
+
+enum TipoEquipamento {
+  COMPUTADOR_MESA
+  NOTEBOOK
+  MONITOR
+  IMPRESSORA
+  SERVIDOR
+  ROTEADOR
+  CABO_ESTRUTURADO
+  FONTE_ALIMENTACAO
+}
+
+enum TipoEventoMovimentacao {
+  MOVIMENTACAO
+  STATUS
+  ESTADO_FISICO
+  CANCELAMENTO
+  CORRECAO
+  ESTORNO
+}
+
+model Organizacao {
+  id                String     @id
+  razaoSocial       String
+  cnpj              String     @unique
+  cnpjNormalizado   String     @unique
+  inscricaoEstadual String
+  enderecoCompleto  String
+  telefone          String
+  email             String
+  dataCadastro      DateTime   @default(now())
+  ativo             Boolean    @default(true)
+  motivoDesativacao String?
+  contratoVigenteId String?
+  version           Int        @default(0)
+  contratoVigente   Contrato?  @relation("ContratoVigente", fields: [id, contratoVigenteId], references: [organizacaoId, id], onDelete: Restrict)
+  contratos         Contrato[] @relation("ContratosOrganizacao")
+  lotes             Lote[]
+
+  @@unique([id, contratoVigenteId])
+}
+
+model Contrato {
+  id                     String       @id
+  organizacaoId          String
+  dataAssinatura         DateTime
+  dataVencimento         DateTime
+  clausulas              String[]     @default([])
+  valorMensal            Float
+  renovacaoAutomatica    Boolean      @default(false)
+  encerradoEm            DateTime?
+  historicoRenovacoes    Json         @default("[]")
+  version                Int          @default(0)
+  organizacao            Organizacao  @relation("ContratosOrganizacao", fields: [organizacaoId], references: [id], onDelete: Restrict)
+  organizacaoComoVigente Organizacao? @relation("ContratoVigente")
+
+  @@unique([organizacaoId, id])
+  @@index([organizacaoId])
+}
+
+model Lote {
+  id                  String        @id
+  dataEntrada         DateTime
+  organizacaoId       String
+  notaFiscal          String
+  transportadora      String
+  statusProcessamento StatusLote    @default(RECEBIDO)
+  observacoes         String        @default("")
+  cancelado           Boolean       @default(false)
+  motivoCancelamento  String?
+  version             Int           @default(0)
+  organizacao         Organizacao   @relation(fields: [organizacaoId], references: [id], onDelete: Restrict)
+  equipamentos        Equipamento[]
+
+  @@index([organizacaoId, dataEntrada])
+}
+
+model Equipamento {
+  id                  String             @id
+  codigoBarrasInterno String             @unique
+  tipo                TipoEquipamento
+  marca               String
+  modelo              String
+  anoFabricacao       Int
+  estadoFisico        EstadoFisico
+  pesoQuilogramas     Float
+  loteId              String
+  posicaoNoLote       Int
+  statusRastreamento  StatusRastreamento @default(AGUARDANDO_TRIAGEM)
+  cancelado           Boolean            @default(false)
+  motivoCancelamento  String?
+  dataCadastro        DateTime?
+  version             Int                @default(0)
+  lote                Lote               @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  movimentacoes       Movimentacao[]
+
+  @@unique([loteId, posicaoNoLote])
+  @@index([loteId, statusRastreamento])
+}
+
+model Movimentacao {
+  id                         String                 @id
+  equipamentoId              String
+  dataHora                   DateTime               @default(now())
+  origem                     String
+  destino                    String
+  responsavel                String
+  observacao                 String
+  tipoEvento                 TipoEventoMovimentacao @default(MOVIMENTACAO)
+  movimentacaoReferenciadaId String?                @unique
+  destinoCorrigido           String?
+  equipamento                Equipamento            @relation(fields: [equipamentoId], references: [id], onDelete: Restrict)
+  movimentacaoReferenciada   Movimentacao?          @relation("ReferenciasMovimentacao", fields: [movimentacaoReferenciadaId], references: [id], onDelete: Restrict)
+  eventosDerivados           Movimentacao[]         @relation("ReferenciasMovimentacao")
+
+  @@index([equipamentoId, dataHora])
+}
+
+model Credencial {
+  id           String       @id
+  usuario      String
+  hashSenha    String
+  salt         String
+  ultimoAcesso DateTime
+  papel        PapelUsuario
+  nomeExibicao String
+  ativo        Boolean      @default(true)
+
+  @@unique([usuario, ativo])
+}
+
+model ParametroGlobal {
+  id                    String   @id
+  versao                Int      @unique
+  aliquotasImpostos     Json
+  coeficienteDepreciacao Float
+  atualizadoEm          DateTime
+  atualizadoPor         String
+
+  @@index([atualizadoEm])
+}
+
+model EventoAuditoria {
+  id                   String   @id
+  timestamp            DateTime @default(now())
+  operacao             String
+  entidade             String
+  dadosAntes           Json?
+  dadosDepois          Json?
+  usuarioResponsavel   String
+  transacaoId          String
+  fase                 String
+  identificadorAnterior String?
+
+  @@index([timestamp])
+  @@index([transacaoId, fase])
+}
