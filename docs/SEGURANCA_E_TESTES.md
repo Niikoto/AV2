@@ -135,7 +135,19 @@ O comando compila o TypeScript e executa os testes da CLI, do servidor, dos repo
 - Varredura de padrões de credenciais não encontrou candidatos em código, testes ou configuração; `.env` está ignorado pelo Git.
 - Os arquivos originais de configuração mestre, credenciais, organizações, lotes, equipamentos, histórico e journal permanecem presentes. Não foram descriptografados nem alterados nesta revisão.
 
-Pendências e decisões a confirmar: Linux não foi testado em runtime; a importação de dados legados permanece opcional e não implementada; não existe frontend web; o hash de senha atual usa SHA-256 com salt e não é adequado como estratégia final para produção. Confirmar com o professor se a interface web e a migração dos dados reais são requisitos da entrega, e se é necessária validação prática em Ubuntu.
+Pendências e decisões a confirmar: a importação de dados legados permanece opcional e não implementada; não existe frontend web; o hash de senha atual usa SHA-256 com salt e não é adequado como estratégia final para produção. Confirmar com o professor se a interface web e a migração dos dados reais são requisitos da entrega.
+
+### Validação em Linux — 24/10/2026
+
+- Executado em Ubuntu 24.04.5 LTS (WSL), Node.js v24.11.1, npm 11.6.2 e PostgreSQL 16.15.
+- `npm ci`, geração do cliente Prisma e `npm run build` concluíram na cópia Linux do projeto.
+- As sete migrações versionadas foram aplicadas com `prisma migrate deploy` em banco PostgreSQL descartável.
+- `npm test`: 33 testes aprovados, 0 falhas e 0 ignorados, incluindo integrações com PostgreSQL.
+- A API iniciou como servidor Linux. `/health`, `/documentation` e `/documentation/json` responderam `200`; o OpenAPI listou 35 caminhos; uma rota protegida sem token respondeu `401`.
+- Fluxo HTTP de credenciais e sessão: criação inicial `201`, login `200`, consulta autenticada antes do logout `200`, logout `204` e token revogado depois do logout `401`.
+- A CLI iniciou, provisionou o administrador local, desbloqueou os dados, autenticou e executou `logout` com sucesso.
+- `npm audit --omit=dev` reportou uma vulnerabilidade moderada na dependência transitiva `fast-uri`. O alerta afeta dependências de produção e precisa ser avaliado em atualização própria.
+- A validação usou cópia do projeto em Linux e banco descartável; o banco e seu usuário foram removidos ao final. Ubuntu, Node.js e PostgreSQL foram instalados no WSL; o serviço PostgreSQL foi parado após a validação.
 
 ## Limitações e escopo de validação
 

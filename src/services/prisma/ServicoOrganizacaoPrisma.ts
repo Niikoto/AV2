@@ -84,9 +84,13 @@ export class ServicoOrganizacaoPrisma {
     return organizacao;
   }
 
-  listarOrganizacoes(incluirDesativadas = false) {
+  listarOrganizacoes(incluirDesativadas = false, nome?: string) {
+    const termo = nome?.trim();
     return new OrganizacaoRepository(this.prisma).listar(
-      incluirDesativadas ? {} : { ativo: true },
+      {
+        ...(incluirDesativadas ? {} : { ativo: true }),
+        ...(termo ? { razaoSocial: { contains: termo, mode: 'insensitive' } } : {}),
+      },
     );
   }
 

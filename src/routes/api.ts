@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest, preHandlerHookHandler } from 'fastify';
+import { randomUUID } from 'node:crypto';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import {
   EstadoFisico,
@@ -22,8 +23,8 @@ declare module 'fastify' {
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
-    payload: { sub: string };
-    user: { sub: string };
+    payload: { sub: string; jti: string };
+    user: { sub: string; jti: string; exp: number };
   }
 }
 
@@ -151,6 +152,11 @@ export function registrarRotasApi(
     if (typeof request.user.sub !== 'string' || !request.user.sub.trim()) {
       throw new ErroApi(401, 'Autenticação inválida ou expirada.');
     }
+    if (typeof request.user.jti !== 'string' || !request.user.jti.trim()) {
+      throw new ErroApi(401, 'Autenticação inválida ou expirada.');
+    }
+    const tokenRevogado = await prisma.tokenRevogado.findUnique({ where: { jti: request.user.jti } });
+    if (tokenRevogado) throw new ErroApi(401, 'Autenticação inválida ou expirada.');
     let usuario;
     try {
       usuario = await autenticacao.buscarCredencialAtiva(request.user.sub);
@@ -221,10 +227,17 @@ export function registrarRotasApi(
     schema: schemaBody(['usuario', 'senha'], { usuario: schemaNaoVazio, senha: schemaNaoVazio }),
   }, async (request, reply) => {
     const credencial = await executar(() => autenticacao.autenticar(request.body.usuario, request.body.senha));
-    const token = app.jwt.sign({ sub: credencial.id }, {
+    const token = app.jwt.sign({ sub: credencial.id, jti: randomUUID() }, {
       expiresIn: jwtExpiresIn,
     });
     return reply.send({ token, tokenType: 'Bearer', expiresIn: jwtExpiresIn, usuario: credencial });
+  });
+
+  app.post('/auth/logout', { preHandler: autenticarPreHandler }, async (request, reply) => {
+    await prisma.tokenRevogado.create({
+      data: { jti: request.user.jti, expiraEm: new Date(request.user.exp * 1000) },
+    });
+    return reply.code(204).send();
   });
 
   app.post<{ Body: { usuario: string; senha: string; papel: PapelUsuario; nomeExibicao?: string } }>(
@@ -250,8 +263,24 @@ export function registrarRotasApi(
     },
   );
 
-  app.get('/auth/credentials', { preHandler: comPermissao(admin) }, async (request) => (
+  app.get('/auth/credentials', {
+    preHandler: comPermissao(admin),
+  }, async (request) => (
     executar(() => autenticacao.listarCredenciais(responsavel(request)))
+  ));
+
+  app.get<{ Querystring: { nome: string } }>('/auth/credentials/search', {
+    schema: {
+      querystring: {
+        type: 'object',
+        required: ['nome'],
+        additionalProperties: false,
+        properties: { nome: schemaNaoVazio },
+      },
+    },
+    preHandler: comPermissao(admin),
+  }, async (request) => (
+    executar(() => autenticacao.listarCredenciais(responsavel(request), request.query.nome))
   ));
 
   app.get<{ Params: IdentificadorParams }>('/auth/credentials/:id', {
@@ -311,18 +340,21 @@ export function registrarRotasApi(
     return reply.code(204).send();
   });
 
-  app.get<{ Querystring: { incluirDesativadas?: boolean } }>('/organizations', {
+  app.get<{ Querystring: { incluirDesativadas?: boolean; nome?: string } }>('/organizations', {
     schema: {
       querystring: {
         type: 'object',
         additionalProperties: false,
-        properties: { incluirDesativadas: { type: 'boolean' } },
+        properties: {
+          incluirDesativadas: { type: 'boolean' },
+          nome: schemaNaoVazio,
+        },
       },
     },
     preHandler: comPermissao(leituraOrganizacao),
   }, async (request) => {
     const incluirDesativadas = request.query.incluirDesativadas ?? false;
-    return executar(() => organizacoes.listarOrganizacoes(incluirDesativadas));
+    return executar(() => organizacoes.listarOrganizacoes(incluirDesativadas, request.query.nome));
   });
 
   app.post<{ Body: OrganizacaoBody }>('/organizations', {
@@ -478,7 +510,7 @@ export function registrarRotasApi(
   });
 
   app.get<{ Querystring: {
-    organizacaoId?: string; dataInicio?: string; dataFim?: string;
+    organizacaoId?: string; nomeOrganizacao?: string; dataInicio?: string; dataFim?: string;
     status?: StatusLote; incluirCancelados?: boolean;
   } }>('/lots', {
     schema: {
@@ -487,6 +519,7 @@ export function registrarRotasApi(
         additionalProperties: false,
         properties: {
           organizacaoId: schemaId,
+          nomeOrganizacao: schemaNaoVazio,
           dataInicio: schemaData,
           dataFim: schemaData,
           status: schemaEnum(StatusLote),
@@ -499,6 +532,7 @@ export function registrarRotasApi(
     const query = request.query;
     return executar(() => lotes.listarLotes({
       organizacaoId: query.organizacaoId,
+      nomeOrganizacao: query.nomeOrganizacao,
       dataInicio: query.dataInicio ? data(query.dataInicio) : undefined,
       dataFim: query.dataFim ? data(query.dataFim) : undefined,
       status: query.status,
@@ -610,7 +644,7 @@ export function registrarRotasApi(
   });
 
   app.get<{ Querystring: {
-    loteId?: string; status?: StatusRastreamento; incluirCancelados?: boolean;
+    loteId?: string; nome?: string; status?: StatusRastreamento; incluirCancelados?: boolean;
   } }>('/equipment', {
     schema: {
       querystring: {
@@ -618,6 +652,7 @@ export function registrarRotasApi(
         additionalProperties: false,
         properties: {
           loteId: schemaId,
+          nome: schemaNaoVazio,
           status: schemaEnum(StatusRastreamento),
           incluirCancelados: { type: 'boolean' },
         },
@@ -628,6 +663,7 @@ export function registrarRotasApi(
     const query = request.query;
     return executar(() => equipamentos.listarEquipamentos({
       loteId: query.loteId,
+      nome: query.nome,
       status: query.status,
       incluirCancelados: query.incluirCancelados ?? false,
     }));

@@ -249,6 +249,7 @@ export class ServicoLotePrisma {
 
   async listarLotes(filtros: {
     organizacaoId?: string;
+    nomeOrganizacao?: string;
     dataInicio?: Date;
     dataFim?: Date;
     status?: StatusLote;
@@ -266,6 +267,9 @@ export class ServicoLotePrisma {
 
     const where: Prisma.LoteWhereInput = {
       ...(filtros.organizacaoId ? { organizacaoId: filtros.organizacaoId } : {}),
+      ...(filtros.nomeOrganizacao?.trim()
+        ? { organizacao: { razaoSocial: { contains: filtros.nomeOrganizacao.trim(), mode: 'insensitive' } } }
+        : {}),
       ...(filtros.status ? { statusProcessamento: filtros.status } : {}),
       ...(filtros.incluirCancelados ? {} : { cancelado: false }),
       ...(filtros.dataInicio || filtros.dataFim

@@ -91,9 +91,17 @@ export class ServicoAutenticacaoPrisma {
     return this.publicarCredencial(credencial);
   }
 
-  async listarCredenciais(administradorId: string) {
+  async listarCredenciais(administradorId: string, nome?: string) {
     await this.exigirAdministrador(this.prisma, administradorId);
-    return (await new CredencialRepository(this.prisma).listar()).map((credencial) => ({
+    const termo = nome?.trim().toLocaleLowerCase();
+    const credenciais = await new CredencialRepository(this.prisma).listar();
+    const credenciaisFiltradas = termo
+      ? credenciais.filter((credencial) => credencial.ativo && (
+        credencial.nomeExibicao.toLocaleLowerCase().includes(termo)
+        || credencial.usuario.toLocaleLowerCase().includes(termo)
+      ))
+      : credenciais;
+    return credenciaisFiltradas.map((credencial) => ({
       id: credencial.id,
       usuario: credencial.ativo ? credencial.usuario : '',
       nomeExibicao: credencial.ativo ? credencial.nomeExibicao : '',

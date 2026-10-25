@@ -3,9 +3,9 @@ import type { Prisma } from '../generated/prisma/client.js';
 export class CredencialRepository {
   constructor(private prisma: Prisma.TransactionClient) {}
 
-  listar(ativas?: boolean) {
+  listar(filtro: Prisma.CredencialWhereInput | boolean = {}) {
     return this.prisma.credencial.findMany({
-      where: ativas === undefined ? {} : { ativo: ativas },
+      where: typeof filtro === 'boolean' ? { ativo: filtro } : filtro,
       orderBy: { usuario: 'asc' },
     });
   }

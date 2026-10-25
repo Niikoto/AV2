@@ -199,3 +199,10 @@ model EventoAuditoria {
   @@index([timestamp])
   @@index([transacaoId, fase])
 }
+
+model TokenRevogado {
+  jti       String   @id
+  expiraEm  DateTime
+
+  @@index([expiraEm])
+}

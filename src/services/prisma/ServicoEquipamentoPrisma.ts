@@ -29,11 +29,20 @@ export class ServicoEquipamentoPrisma {
 
   async listarEquipamentos(filtros: {
     loteId?: string;
+    nome?: string;
     status?: StatusRastreamento;
     incluirCancelados?: boolean;
   } = {}) {
     const where: Prisma.EquipamentoWhereInput = {
       ...(filtros.loteId ? { loteId: filtros.loteId } : {}),
+      ...(filtros.nome?.trim()
+        ? {
+          OR: [
+            { marca: { contains: filtros.nome.trim(), mode: 'insensitive' } },
+            { modelo: { contains: filtros.nome.trim(), mode: 'insensitive' } },
+          ],
+        }
+        : {}),
       ...(filtros.status ? { statusRastreamento: filtros.status } : {}),
       ...(filtros.incluirCancelados ? {} : { cancelado: false }),
     };

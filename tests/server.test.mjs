@@ -120,6 +120,10 @@ test('rotas de negócio exigem JWT, aplicam permissões e rejeitam corpos invál
       findUnique: async ({ where }) => credenciais[where.id] ?? null,
       findFirst: async () => null,
     },
+    tokenRevogado: {
+      findUnique: async () => null,
+      create: async ({ data }) => data,
+    },
     parametroGlobal: {
       findFirst: async () => {
         if (falhaParametro) throw falhaParametro;
@@ -153,7 +157,7 @@ test('rotas de negócio exigem JWT, aplicam permissões e rejeitam corpos invál
   assert.equal(loginInvalido.statusCode, 401);
 
   await app.ready();
-  const adminToken = app.jwt.sign({ sub: 'admin-api-test' });
+  const adminToken = app.jwt.sign({ sub: 'admin-api-test', jti: 'admin-token-test' });
   const consultaPermitida = await app.inject({
     method: 'GET',
     url: '/global-parameters',
@@ -179,7 +183,7 @@ test('rotas de negócio exigem JWT, aplicam permissões e rejeitam corpos invál
   assert.equal(registroDuplicado.body.includes('detalhe interno que não deve vazar'), false);
   falhaParametro = undefined;
 
-  const auditorToken = app.jwt.sign({ sub: 'auditor-api-test' });
+  const auditorToken = app.jwt.sign({ sub: 'auditor-api-test', jti: 'auditor-token-test' });
   const acessoNegado = await app.inject({
     method: 'GET',
     url: '/global-parameters',
@@ -189,6 +193,7 @@ test('rotas de negócio exigem JWT, aplicam permissões e rejeitam corpos invál
 
   const tokenComPapelForjado = app.jwt.sign({
     sub: 'auditor-api-test',
+    jti: 'forged-role-token-test',
     papel: 'ADMINISTRADOR',
   });
   const papelForjadoNegado = await app.inject({
@@ -260,7 +265,7 @@ test('login HTTP verifica credenciais reais e emite JWT mínimo, expirável e ut
 
     const payloadJwt = JSON.parse(Buffer.from(resposta.token.split('.')[1], 'base64url').toString('utf8'));
     assert.equal(payloadJwt.sub, usuarioId);
-    assert.deepEqual(Object.keys(payloadJwt).sort(), ['exp', 'iat', 'sub']);
+    assert.deepEqual(Object.keys(payloadJwt).sort(), ['exp', 'iat', 'jti', 'sub']);
     assert.equal(payloadJwt.exp - payloadJwt.iat, 30 * 60);
 
     const rotaProtegida = await app.inject({
@@ -402,6 +407,10 @@ test('rotas HTTP cadastram, consultam, atualizam e desativam organizações sem 
     credencial: {
       findUnique: async ({ where }) => where.id === administrador.id ? administrador : null,
     },
+    tokenRevogado: {
+      findUnique: async () => null,
+      create: async ({ data }) => data,
+    },
     organizacao: {
       findMany: async ({ where }) => [...organizacoes.values()]
         .filter((organizacao) => where.ativo === undefined || organizacao.ativo === where.ativo),
@@ -445,7 +454,7 @@ test('rotas HTTP cadastram, consultam, atualizam e desativam organizações sem 
   };
   const app = criarAplicacao(prisma);
   await app.ready();
-  const token = app.jwt.sign({ sub: administrador.id });
+  const token = app.jwt.sign({ sub: administrador.id, jti: 'admin-route-token-test' });
   const authorization = { authorization: `Bearer ${token}` };
   const cnpj = '11222333000181';
   const cadastro = await app.inject({
