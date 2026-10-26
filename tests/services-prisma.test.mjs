@@ -98,7 +98,22 @@ test('serviço Prisma de autenticação protege gestão de credenciais e não pu
     assert.equal(await servico.possuiPermissao(usuario.id, 'GERENCIAR_LOTES'), true);
     await servico.desativarCredencial(usuario.id, administradorId);
     await assert.rejects(servico.autenticar(`${prefixo}-auditor`, 'senha-nova'), /inválidos/i);
-    await assert.rejects(servico.desativarCredencial(usuarioAdministrador, administradorId), /último administrador/i);
+    const outrosAdministradoresAtivos = await prisma.credencial.count({
+      where: {
+        ativo: true,
+        papel: PapelUsuario.ADMINISTRADOR,
+        id: { not: administradorId },
+      },
+    });
+    if (outrosAdministradoresAtivos === 0) {
+      await assert.rejects(
+        servico.desativarCredencial(usuarioAdministrador, administradorId),
+        /último administrador/i,
+      );
+    } else {
+      await servico.desativarCredencial(usuarioAdministrador, administradorId);
+      assert.equal((await prisma.credencial.findUnique({ where: { id: administradorId } }))?.ativo, false);
+    }
   } finally {
     await prisma.eventoAuditoria.deleteMany({
       where: { usuarioResponsavel: { in: [administradorId, ...usuarioIds] } },

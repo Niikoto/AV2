@@ -5,6 +5,57 @@ import fastifySwaggerUi from '@fastify/swagger-ui';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { registrarRotasApi } from './routes/api.js';
 
+const descricoesRotas: Record<string, string> = {
+  'GET /health': 'Verifica a disponibilidade da API e a conexão com o banco de dados.',
+  'POST /auth/login': 'Autentica um usuário e retorna um token de acesso Bearer.',
+  'POST /auth/logout': 'Encerra a sessão atual revogando o token de acesso.',
+  'POST /auth/credentials': 'Cria uma credencial de acesso; na configuração inicial, permite criar a primeira conta administrativa.',
+  'GET /auth/credentials': 'Lista as credenciais de usuários cadastradas.',
+  'GET /auth/credentials/search': 'Busca credenciais de usuários pelo nome informado.',
+  'GET /auth/credentials/:id': 'Consulta os dados de uma credencial pelo identificador.',
+  'PATCH /auth/credentials/:id/name': 'Altera o nome de exibição de uma credencial.',
+  'PATCH /auth/credentials/:id/role': 'Altera o papel e as permissões de uma credencial.',
+  'PUT /auth/credentials/:id/password': 'Redefine a senha de uma credencial.',
+  'DELETE /auth/credentials/:id': 'Desativa uma credencial de acesso.',
+  'PUT /auth/password': 'Altera a senha do usuário autenticado.',
+  'GET /organizations': 'Lista organizações, com filtros opcionais por nome e situação.',
+  'POST /organizations': 'Cadastra uma organização.',
+  'GET /organizations/:id': 'Consulta os dados de uma organização.',
+  'PATCH /organizations/:id': 'Atualiza os dados informados de uma organização.',
+  'DELETE /organizations/:id': 'Desativa uma organização mediante o motivo informado.',
+  'GET /organizations/:id/contracts': 'Lista os contratos vinculados a uma organização.',
+  'POST /organizations/:id/contracts': 'Cadastra um contrato para uma organização.',
+  'PATCH /organizations/:id/contracts/:contratoId': 'Atualiza cláusulas, valor ou renovação automática de um contrato.',
+  'POST /organizations/:id/contracts/renew': 'Renova o contrato vigente da organização com a nova data de vencimento.',
+  'POST /organizations/:id/contracts/:contratoId/cancel': 'Cancela um contrato específico da organização.',
+  'POST /organizations/:id/contracts/close': 'Encerra o contrato vigente da organização.',
+  'GET /lots': 'Lista lotes com filtros opcionais por organização, período, situação e cancelamento.',
+  'POST /lots': 'Cadastra um lote para uma organização.',
+  'POST /lots/with-equipment': 'Cadastra um lote e seus equipamentos em uma única operação.',
+  'GET /lots/:id': 'Consulta os dados e os equipamentos associados a um lote.',
+  'PATCH /lots/:id': 'Atualiza os dados informados de um lote.',
+  'POST /lots/:id/triage': 'Conclui a triagem de um lote.',
+  'POST /lots/:id/equipment': 'Adiciona um equipamento a um lote.',
+  'DELETE /lots/:id': 'Cancela um lote mediante o motivo informado.',
+  'GET /equipment': 'Lista equipamentos com filtros opcionais por lote, nome, situação e cancelamento.',
+  'GET /equipment/:id': 'Consulta os dados de um equipamento.',
+  'GET /equipment/:id/tracking': 'Consulta o histórico de rastreamento e movimentações de um equipamento.',
+  'PATCH /equipment/:id': 'Atualiza os dados de identificação e peso de um equipamento.',
+  'PATCH /equipment/:id/status': 'Atualiza a situação de rastreamento de um equipamento.',
+  'PATCH /equipment/:id/physical-state': 'Atualiza o estado físico de um equipamento e registra uma justificativa opcional.',
+  'POST /equipment/:id/movements': 'Registra uma movimentação do equipamento para o destino informado.',
+  'POST /equipment/:id/movements/corrections': 'Corrige uma movimentação existente, informando o destino correto e a justificativa.',
+  'POST /equipment/:id/movements/reversals': 'Estorna uma movimentação existente mediante justificativa.',
+  'DELETE /equipment/:id': 'Cancela um equipamento mediante o motivo informado.',
+  'GET /global-parameters': 'Consulta os parâmetros globais atuais do sistema.',
+  'GET /global-parameters/history': 'Lista o histórico de alterações dos parâmetros globais.',
+  'PATCH /global-parameters': 'Atualiza os parâmetros globais informados.',
+  'GET /reports/status': 'Gera um relatório operacional dos equipamentos na situação informada.',
+  'GET /reports/organizations/:id': 'Gera um relatório da organização para o período informado.',
+  'GET /reports/financial': 'Gera um relatório financeiro consolidado para o período informado.',
+  'GET /reports/audit': 'Gera um relatório de eventos de auditoria para o período informado.',
+};
+
 export function criarAplicacao(
   prisma: PrismaClient,
   jwtSecret = process.env.JWT_SECRET,
@@ -83,12 +134,15 @@ export function criarAplicacao(
           ? [{}, { bearerAuth: [] }]
           : [{ bearerAuth: [] }];
       const routeSchema = schema ?? {};
+      const descricao = descricoesRotas[`${method} ${url}`]
+        ?? 'Executa a operação indicada por esta rota da API.';
 
       return {
         schema: {
           ...routeSchema,
           tags: routeSchema.tags ?? [tag],
-          summary: routeSchema.summary ?? `${method} ${url}`,
+          summary: routeSchema.summary ?? descricoesRotas[`${method} ${url}`] ?? `${method} ${url}`,
+          description: routeSchema.description ?? descricao,
           security,
         },
         url,
