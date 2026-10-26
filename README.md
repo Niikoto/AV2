@@ -13,7 +13,9 @@ Sistema de logística reversa para organizações, contratos, lotes e equipament
 
 ## Duas formas de uso
 
-O projeto oferece uma CLI e uma API REST. Elas são independentes: a CLI guarda seus registros em arquivos locais cifrados dentro de `data/`; a API guarda seus registros em PostgreSQL. Contas e dados não são compartilhados entre as duas modalidades.
+O projeto oferece uma CLI conectada à API por padrão, uma CLI local opcional e uma API REST. A CLI conectada compartilha contas e dados com o PostgreSQL. A CLI local guarda registros separados em arquivos cifrados dentro de `data/`.
+
+Para usar o CLI conectado, inicie a API com `npm start` e, em outro terminal, execute `npm run start:cli`. O endereço padrão é `http://127.0.0.1:3000`; configure `API_BASE_URL` se a API estiver em outro endereço. Entre com uma conta cadastrada na API. Para usar o modo local, execute `npm run start:cli:local`.
 
 A API não inclui uma interface web própria. A página `/documentation` fornece a documentação interativa Swagger para consultar e chamar os endpoints.
 

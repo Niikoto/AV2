@@ -10,7 +10,9 @@
   "scripts": {
     "build": "npm run db:generate && tsc -p tsconfig.json",
     "start": "npm run start:server",
-    "start:cli": "node --import dotenv/config dist/index.js",
+    "start:cli": "node --import dotenv/config dist/api-cli.js",
+    "start:cli:api": "node --import dotenv/config dist/api-cli.js",
+    "start:cli:local": "node --import dotenv/config dist/index.js",
     "start:server": "node --import dotenv/config dist/server.js",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",

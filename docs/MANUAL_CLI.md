@@ -1,10 +1,14 @@
 # Manual do usuário — CLI
 
-A CLI é o modo interativo do Greencode. Ela usa armazenamento local cifrado em `data/`, separado do banco e das contas da API.
+A CLI usa a API por padrão (`npm run start:cli`) e compartilha os dados PostgreSQL com a aplicação. O modo local opcional (`npm run start:cli:local`) usa armazenamento cifrado em `data/`, separado do banco e das contas da API.
+
+## CLI conectado à API
+
+Inicie o servidor com `npm start` e, em outro terminal, inicie `npm run start:cli`. O CLI usa `http://127.0.0.1:3000` por padrão; defina `API_BASE_URL` para apontar para outro endereço. Faça login com uma conta já cadastrada na API, por exemplo `login admin --senha SUA_SENHA`. A API valida o token e as permissões e persiste as alterações no PostgreSQL. Use `ajuda` para consultar os comandos.
 
 ## Iniciar, entrar e sair
 
-Inicie com `npm run start:cli`. No primeiro início, defina a senha do administrador local; nos seguintes, use a senha de desbloqueio. Depois do desbloqueio, entre na sessão:
+Para usar o modo local, execute `npm run start:cli:local`. No primeiro início, defina a senha do administrador local; nos seguintes, use a senha de desbloqueio. Depois do desbloqueio, entre na sessão:
 
 ```text
 login admin --senha SUA_SENHA
